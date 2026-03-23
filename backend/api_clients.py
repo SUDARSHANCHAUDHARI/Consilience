@@ -23,12 +23,15 @@ class APIClient:
 class AnthropicClient:
     @staticmethod
     async def call(model: str, prompt: str, system: str = "") -> str:
+        api_key = os.getenv("ANTHROPIC_API_KEY")
+        if not api_key:
+            raise ValueError("ANTHROPIC_API_KEY is not set")
         model_name = model.replace("anthropic/", "")
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 "https://api.anthropic.com/v1/messages",
                 headers={
-                    "x-api-key": os.getenv("ANTHROPIC_API_KEY"),
+                    "x-api-key": api_key,
                     "anthropic-version": "2023-06-01",
                     "content-type": "application/json",
                 },
@@ -43,11 +46,17 @@ class AnthropicClient:
             )
             response.raise_for_status()
             data = response.json()
-            return data["content"][0]["text"]
+            try:
+                return data["content"][0]["text"]
+            except (KeyError, IndexError) as e:
+                raise ValueError(f"Unexpected Anthropic response format: {e}")
 
 class OpenAIClient:
     @staticmethod
     async def call(model: str, prompt: str, system: str = "") -> str:
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise ValueError("OPENAI_API_KEY is not set")
         model_name = model.replace("openai/", "")
         messages = []
         if system:
@@ -68,7 +77,7 @@ class OpenAIClient:
             response = await client.post(
                 "https://api.openai.com/v1/chat/completions",
                 headers={
-                    "Authorization": f"Bearer {os.getenv('OPENAI_API_KEY')}",
+                    "Authorization": f"Bearer {api_key}",
                     "Content-Type": "application/json",
                 },
                 json=payload,
@@ -76,13 +85,18 @@ class OpenAIClient:
             )
             response.raise_for_status()
             data = response.json()
-            return data["choices"][0]["message"]["content"]
+            try:
+                return data["choices"][0]["message"]["content"]
+            except (KeyError, IndexError) as e:
+                raise ValueError(f"Unexpected OpenAI response format: {e}")
 
 class GoogleClient:
     @staticmethod
     async def call(model: str, prompt: str, system: str = "") -> str:
-        model_name = model.replace("google/", "")
         api_key = os.getenv("GOOGLE_API_KEY")
+        if not api_key:
+            raise ValueError("GOOGLE_API_KEY is not set")
+        model_name = model.replace("google/", "")
         payload = {
             "contents": [{"parts": [{"text": prompt}]}],
             "generationConfig": {
@@ -101,11 +115,17 @@ class GoogleClient:
             )
             response.raise_for_status()
             data = response.json()
-            return data["candidates"][0]["content"]["parts"][0]["text"]
+            try:
+                return data["candidates"][0]["content"]["parts"][0]["text"]
+            except (KeyError, IndexError) as e:
+                raise ValueError(f"Unexpected Google response format: {e}")
 
 class XAIClient:
     @staticmethod
     async def call(model: str, prompt: str, system: str = "") -> str:
+        api_key = os.getenv("XAI_API_KEY")
+        if not api_key:
+            raise ValueError("XAI_API_KEY is not set")
         model_name = model.replace("xai/", "")
         messages = []
         if system:
@@ -115,7 +135,7 @@ class XAIClient:
             response = await client.post(
                 "https://api.x.ai/v1/chat/completions",
                 headers={
-                    "Authorization": f"Bearer {os.getenv('XAI_API_KEY')}",
+                    "Authorization": f"Bearer {api_key}",
                     "Content-Type": "application/json",
                 },
                 json={
@@ -128,11 +148,17 @@ class XAIClient:
             )
             response.raise_for_status()
             data = response.json()
-            return data["choices"][0]["message"]["content"]
+            try:
+                return data["choices"][0]["message"]["content"]
+            except (KeyError, IndexError) as e:
+                raise ValueError(f"Unexpected xAI response format: {e}")
 
 class MetaClient:
     @staticmethod
     async def call(model: str, prompt: str, system: str = "") -> str:
+        api_key = os.getenv("TOGETHER_API_KEY")
+        if not api_key:
+            raise ValueError("TOGETHER_API_KEY is not set")
         model_name = model.replace("meta/", "meta-llama/")
         messages = []
         if system:
@@ -142,7 +168,7 @@ class MetaClient:
             response = await client.post(
                 "https://api.together.xyz/v1/chat/completions",
                 headers={
-                    "Authorization": f"Bearer {os.getenv('TOGETHER_API_KEY')}",
+                    "Authorization": f"Bearer {api_key}",
                     "Content-Type": "application/json",
                 },
                 json={
@@ -155,11 +181,17 @@ class MetaClient:
             )
             response.raise_for_status()
             data = response.json()
-            return data["choices"][0]["message"]["content"]
+            try:
+                return data["choices"][0]["message"]["content"]
+            except (KeyError, IndexError) as e:
+                raise ValueError(f"Unexpected Meta/Together response format: {e}")
 
 class MistralClient:
     @staticmethod
     async def call(model: str, prompt: str, system: str = "") -> str:
+        api_key = os.getenv("MISTRAL_API_KEY")
+        if not api_key:
+            raise ValueError("MISTRAL_API_KEY is not set")
         model_name = model.replace("mistral/", "")
         messages = []
         if system:
@@ -169,7 +201,7 @@ class MistralClient:
             response = await client.post(
                 "https://api.mistral.ai/v1/chat/completions",
                 headers={
-                    "Authorization": f"Bearer {os.getenv('MISTRAL_API_KEY')}",
+                    "Authorization": f"Bearer {api_key}",
                     "Content-Type": "application/json",
                 },
                 json={
@@ -182,4 +214,7 @@ class MistralClient:
             )
             response.raise_for_status()
             data = response.json()
-            return data["choices"][0]["message"]["content"]
+            try:
+                return data["choices"][0]["message"]["content"]
+            except (KeyError, IndexError) as e:
+                raise ValueError(f"Unexpected Mistral response format: {e}")

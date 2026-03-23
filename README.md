@@ -18,6 +18,8 @@ Inspired by [Andrej Karpathy's LLM Council](https://x.com/karpathy) concept.
   - [3. Set up the frontend](#3-set-up-the-frontend)
   - [4. Configure API keys](#4-configure-api-keys)
 - [Running the App](#running-the-app)
+- [Docker Deployment](#docker-deployment)
+- [Testing](#testing)
 - [Free Setup (No Cost)](#free-setup-no-cost)
 - [Getting API Keys](#getting-api-keys)
 - [Configuration](#configuration)
@@ -193,6 +195,108 @@ Type a question, click **Ask Council**, and wait for the 3-stage debate to compl
 
 ---
 
+## Docker Deployment
+
+The easiest way to run Consilience in production.
+
+### Prerequisites
+- [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/) installed
+- A `.env` file with your API keys (copy from `.env.example`)
+
+### Run with Docker Compose
+
+```bash
+docker compose up --build
+```
+
+This starts:
+- **Backend** on port `8000`
+- **Frontend** on port `80` (served by nginx)
+
+Open [http://localhost](http://localhost) in your browser.
+
+### Stopping
+
+```bash
+docker compose down
+```
+
+### Production deployment
+
+To deploy on a server, set the `CORS_ORIGINS` variable in your `.env` to your actual domain:
+
+```env
+CORS_ORIGINS=https://yourdomain.com
+```
+
+And pass your domain as a build arg for the frontend so the API URL is baked in:
+
+```bash
+docker compose build --build-arg VITE_API_URL=https://api.yourdomain.com
+docker compose up
+```
+
+### Conversation history
+
+Conversations are saved to `data/conversations/` on your host machine via the Docker volume mount in `docker-compose.yml`. They persist across container restarts.
+
+---
+
+## Testing
+
+### Backend tests
+
+Install dev dependencies (one time):
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements-dev.txt
+```
+
+Run all 24 tests:
+
+```bash
+python3 -m pytest
+```
+
+Run with verbose output:
+
+```bash
+python3 -m pytest -v
+```
+
+Tests cover:
+- **API client routing** — each model prefix routes to the correct provider
+- **API key validation** — missing keys raise clear errors for all 6 providers
+- **Response parsing** — valid responses return text; malformed responses raise descriptive errors
+- **Query endpoint** — health check, missing body, full council response, graceful model error handling
+
+### Frontend tests
+
+```bash
+cd frontend
+pnpm test
+```
+
+Run in watch mode (re-runs on file save):
+
+```bash
+pnpm test:watch
+```
+
+Tests cover:
+- Renders header and form elements
+- Ignores empty query submissions
+- Disables input/button while loading
+- Displays error banner on network failure or server error
+- Clears previous error on new submission
+- Renders Stage 1 model tabs after successful query
+- Renders Stage 3 final answer
+- Toggles peer reviews show/hide
+
+---
+
 ## Free Setup (No Cost)
 
 You can run Consilience completely free using providers that offer free tiers.
@@ -346,16 +450,24 @@ Consilience/
 │   ├── __init__.py             # Loads .env on startup
 │   ├── config.py               # All settings: models, tokens, temperature
 │   ├── api_clients.py          # API call logic for each provider
-│   └── main.py                 # Server, endpoints, 3-stage debate logic
+│   ├── main.py                 # Server, endpoints, 3-stage debate logic
+│   └── tests/                  # Backend test suite (pytest)
+│       ├── test_api_clients.py # Tests for routing, key validation, response parsing
+│       └── test_main.py        # Tests for FastAPI endpoints
 │
 ├── frontend/                   # React frontend
 │   ├── src/
+│   │   ├── __tests__/
+│   │   │   └── App.test.jsx    # Frontend test suite (Vitest)
 │   │   ├── App.jsx             # Main UI — all components and state
 │   │   ├── App.css             # All styles (purple gradient theme)
-│   │   └── main.jsx            # React entry point
+│   │   ├── main.jsx            # React entry point
+│   │   └── test-setup.js       # Vitest setup (jest-dom matchers)
 │   ├── index.html              # HTML shell
 │   ├── package.json            # Node dependencies
-│   └── vite.config.js          # Vite config (port 5173)
+│   ├── vite.config.js          # Vite + Vitest config
+│   ├── Dockerfile              # Frontend Docker image (nginx)
+│   └── nginx.conf              # nginx config for SPA routing
 │
 ├── data/
 │   └── conversations/          # Auto-saved query history (JSON files)
@@ -364,7 +476,11 @@ Consilience/
 ├── .env                        # Your API keys (never commit this)
 ├── .env.example                # Template showing required keys
 ├── .gitignore                  # Ignores venv, .env, node_modules, etc.
-├── requirements.txt            # Python dependencies
+├── Dockerfile                  # Backend Docker image
+├── docker-compose.yml          # Runs backend + frontend together
+├── requirements.txt            # Python runtime dependencies
+├── requirements-dev.txt        # Python dev/test dependencies
+├── pytest.ini                  # Pytest configuration
 └── README.md                   # This file
 ```
 
@@ -543,8 +659,8 @@ This means that specific model's API call failed. Common reasons:
 ### CORS error in browser console
 
 The backend must be running on port `8000` and the frontend on port `5173`. If you changed either port, update:
-- Frontend: `App.jsx` line with `http://localhost:8000/api/query`
-- Backend: CORS middleware in `main.py` (`allow_origins`)
+- Frontend: set `VITE_API_URL=http://localhost:<your-backend-port>` in `frontend/.env.local`
+- Backend: set `CORS_ORIGINS=http://localhost:<your-frontend-port>` in your `.env`
 
 ### Slow responses
 

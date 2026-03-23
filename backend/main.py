@@ -1,6 +1,7 @@
 import os
 import json
 import asyncio
+import logging
 from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Any
@@ -11,11 +12,18 @@ from pydantic import BaseModel
 from backend.config import COUNCIL_MODELS, CHAIRMAN_MODEL, MODEL_DISPLAY_NAMES, CONVERSATIONS_DIR
 from backend.api_clients import APIClient
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
+logger = logging.getLogger(__name__)
+
 app = FastAPI(title="Consilience")
 
+cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -48,11 +56,11 @@ async def process_query(request: QueryRequest):
     query = request.query
     timestamp = datetime.now().isoformat()
     try:
-        print(f"Stage 1: Getting responses from {len(COUNCIL_MODELS)} models...")
+        logger.info("Stage 1: Getting responses from %d models...", len(COUNCIL_MODELS))
         stage1_responses = await get_initial_responses(query)
-        print(f"Stage 2: Getting reviews from {len(COUNCIL_MODELS)} models...")
+        logger.info("Stage 2: Getting reviews from %d models...", len(COUNCIL_MODELS))
         stage2_reviews = await get_reviews(query, stage1_responses)
-        print("Stage 3: Chairman synthesizing final answer...")
+        logger.info("Stage 3: Chairman synthesizing final answer...")
         stage3_final = await get_final_answer(query, stage1_responses, stage2_reviews)
         conversation_data = {
             "query": query,
@@ -70,7 +78,7 @@ async def process_query(request: QueryRequest):
             timestamp=timestamp,
         )
     except Exception as e:
-        print(f"Error: {str(e)}")
+        logger.error("Error processing query: %s", str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
 async def get_initial_responses(query: str) -> List[ModelResponse]:
@@ -87,7 +95,7 @@ async def get_initial_responses(query: str) -> List[ModelResponse]:
                 response=response
             )
         except Exception as e:
-            print(f"Error with {model}: {str(e)}")
+            logger.error("Error with %s: %s", model, str(e))
             return ModelResponse(
                 model=model,
                 model_name=MODEL_DISPLAY_NAMES.get(model, model),
@@ -121,7 +129,7 @@ Please review these responses. Rank them by quality (1 being best, {len(response
                 review=review
             )
         except Exception as e:
-            print(f"Error with {model} review: {str(e)}")
+            logger.error("Error with %s review: %s", model, str(e))
             return ReviewResponse(
                 model=model,
                 model_name=MODEL_DISPLAY_NAMES.get(model, model),

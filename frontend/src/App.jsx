@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import './App.css';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
 function App() {
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [stage, setStage] = useState('');
   const [result, setResult] = useState(null);
+  const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState(0);
   const [showReviews, setShowReviews] = useState(false);
 
@@ -15,25 +18,26 @@ function App() {
 
     setLoading(true);
     setResult(null);
+    setError(null);
     setStage('Stage 1: Getting responses from council members...');
 
     try {
-      const response = await fetch('http://localhost:8000/api/query', {
+      const response = await fetch(`${API_URL}/api/query`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to get response');
+        const detail = await response.json().catch(() => ({}));
+        throw new Error(detail.detail || `Server error: ${response.status}`);
       }
 
       const data = await response.json();
       setResult(data);
       setStage('');
-    } catch (error) {
-      console.error('Error:', error);
-      alert('Error communicating with the council. Please try again.');
+    } catch (err) {
+      setError(err.message || 'Error communicating with the council. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -65,6 +69,12 @@ function App() {
           <div className="loading">
             <div className="spinner"></div>
             <p>{stage}</p>
+          </div>
+        )}
+
+        {error && (
+          <div className="error-banner">
+            <p>{error}</p>
           </div>
         )}
 

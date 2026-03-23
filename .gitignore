@@ -4,4 +4,5 @@ __pycache__/
 data/conversations/*.json
 frontend/node_modules/
 frontend/dist/
+frontend/pnpm-lock.yaml
 .DS_Store
