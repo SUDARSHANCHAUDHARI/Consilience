@@ -9,3 +9,8 @@ out/
 .vercel
 pnpm-debug.log*
 tsconfig.tsbuildinfo
+
+# Local planning notes
+CLAUDE.md
+CLAUDE_TASKS.md
+PLAN.md

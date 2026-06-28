@@ -1,5 +1,10 @@
 # Consilience 🧠🔭
 
+[![Next.js](https://img.shields.io/badge/Next.js-15-black.svg)](https://nextjs.org/)
+[![Python](https://img.shields.io/badge/Python-backend-3776AB.svg)](https://www.python.org/)
+[![Claude](https://img.shields.io/badge/Claude-Sonnet%204.6-7c3aed.svg)](https://www.anthropic.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
 **See any topic through multiple disciplinary lenses simultaneously — scientific, philosophical, economic, cultural, historical, and ethical.**
 
 Type any question or topic, select 2 or more perspectives, and get a structured multi-lens analysis: a confidence-weighted view from each discipline, areas where the perspectives agree, points of conflict, and a final synthesis that bridges them all.
@@ -174,7 +179,7 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 <div align="center">
 
-**Made with ❤️ by [SUDARSHANCHAUDHARI](https://github.com/SUDARSHANCHAUDHARI)**
+**Built by Sudarshan Chaudhari — SudarshanTechLabs.** [@SUDARSHANCHAUDHARI](https://github.com/SUDARSHANCHAUDHARI)
 
 [⭐ Star this repo](https://github.com/SUDARSHANCHAUDHARI/Consilience) · [🐛 Report Issue](https://github.com/SUDARSHANCHAUDHARI/Consilience/issues)
 
