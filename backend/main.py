@@ -1,11 +1,14 @@
 import os
 import json
+import time
 import asyncio
+import hmac
 import logging
+from collections import deque
 from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Any
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -31,6 +34,43 @@ app.add_middleware(
 
 Path(CONVERSATIONS_DIR).mkdir(parents=True, exist_ok=True)
 
+# ── Abuse protection ──────────────────────────────────────────────────────────
+# Each /api/query fans out to ~2N+1 paid model calls, so throttle hard and cap size.
+MAX_QUERY_CHARS = int(os.getenv("MAX_QUERY_CHARS", "8000"))
+RATE_MAX = int(os.getenv("RATE_LIMIT_MAX", "10"))
+RATE_WINDOW = float(os.getenv("RATE_LIMIT_WINDOW_S", "60"))
+API_TOKEN = os.getenv("CONSILIENCE_TOKEN", "")  # if set, callers must present it
+
+_hits: Dict[str, deque] = {}
+
+
+def _client_ip(request: Request) -> str:
+    fwd = request.headers.get("x-forwarded-for")
+    if fwd:
+        return fwd.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+def rate_limit(request: Request) -> None:
+    now = time.monotonic()
+    ip = _client_ip(request)
+    dq = _hits.setdefault(ip, deque())
+    while dq and now - dq[0] > RATE_WINDOW:
+        dq.popleft()
+    if len(dq) >= RATE_MAX:
+        raise HTTPException(status_code=429, detail="Rate limit exceeded. Try again later.")
+    dq.append(now)
+
+
+def require_token(request: Request) -> None:
+    if not API_TOKEN:
+        return
+    header = request.headers.get("authorization", "")
+    presented = header[7:] if header.lower().startswith("bearer ") else ""
+    if not hmac.compare_digest(presented, API_TOKEN):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+
 class QueryRequest(BaseModel):
     query: str
 
@@ -52,8 +92,16 @@ class CouncilResponse(BaseModel):
     timestamp: str
 
 @app.post("/api/query", response_model=CouncilResponse)
-async def process_query(request: QueryRequest):
-    query = request.query
+async def process_query(
+    request: QueryRequest,
+    _rl: None = Depends(rate_limit),
+    _auth: None = Depends(require_token),
+):
+    query = (request.query or "").strip()
+    if not query:
+        raise HTTPException(status_code=400, detail="query is required")
+    if len(query) > MAX_QUERY_CHARS:
+        raise HTTPException(status_code=413, detail="query too long")
     timestamp = datetime.now().isoformat()
     try:
         logger.info("Stage 1: Getting responses from %d models...", len(COUNCIL_MODELS))
@@ -77,9 +125,11 @@ async def process_query(request: QueryRequest):
             stage3_final=stage3_final,
             timestamp=timestamp,
         )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error("Error processing query: %s", str(e))
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 async def get_initial_responses(query: str) -> List[ModelResponse]:
     async def get_response(model: str) -> ModelResponse:
@@ -99,7 +149,7 @@ async def get_initial_responses(query: str) -> List[ModelResponse]:
             return ModelResponse(
                 model=model,
                 model_name=MODEL_DISPLAY_NAMES.get(model, model),
-                response=f"[Error: {str(e)}]"
+                response="[Error: model call failed]"
             )
     responses = list(await asyncio.gather(*[get_response(model) for model in COUNCIL_MODELS]))
     return responses
@@ -133,7 +183,7 @@ Please review these responses. Rank them by quality (1 being best, {len(response
             return ReviewResponse(
                 model=model,
                 model_name=MODEL_DISPLAY_NAMES.get(model, model),
-                review=f"[Error: {str(e)}]"
+                review="[Error: review failed]"
             )
     reviews = list(await asyncio.gather(*[get_review(model) for model in COUNCIL_MODELS]))
     return reviews
@@ -175,4 +225,4 @@ async def health_check():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host=os.getenv("HOST", "127.0.0.1"), port=int(os.getenv("PORT", "8000")))
