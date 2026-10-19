@@ -1,6 +1,6 @@
 # Consilience 🧠🔭
 
-[![Next.js](https://img.shields.io/badge/Next.js-15-black.svg)](https://nextjs.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-16-black.svg)](https://nextjs.org/)
 [![Python](https://img.shields.io/badge/Python-backend-3776AB.svg)](https://www.python.org/)
 [![Claude](https://img.shields.io/badge/Claude-Sonnet%204.6-7c3aed.svg)](https://www.anthropic.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
@@ -45,7 +45,7 @@ Type any question or topic, select 2 or more perspectives, and get a structured 
 - ✅ **Consilience synthesis** — convergent insight beyond what any single discipline sees
 
 ### ⚙️ Technical Features
-- ✅ **Next.js 15 App Router** — fast SSR + client interactivity
+- ✅ **Next.js 16 App Router** — fast SSR + client interactivity
 - ✅ **TypeScript strict mode** — fully typed analysis result interfaces
 - ✅ **Tailwind CSS** — sky blue accent, animated confidence progress bars
 
@@ -124,7 +124,6 @@ Consilience/
 pnpm dev      # Start development server (Turbopack)
 pnpm build    # Production build
 pnpm start    # Start production server
-pnpm lint     # ESLint check
 ```
 
 ---
@@ -154,7 +153,7 @@ Get your key at [console.anthropic.com](https://console.anthropic.com). Add it t
 
 | Component | Technology |
 |---|---|
-| **Framework** | Next.js 15 (App Router) |
+| **Framework** | Next.js 16 (App Router) |
 | **Language** | TypeScript (strict mode) |
 | **Styling** | Tailwind CSS |
 | **AI** | Claude API — claude-sonnet-4-6 |
